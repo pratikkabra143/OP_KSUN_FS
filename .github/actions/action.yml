@@ -276,17 +276,32 @@ runs:
         cd "$CONFIG"
         echo "Initializing and syncing kernel source..."
         
-        if [[ "$OP_MANIFEST" == https://* ]]; then
-          mkdir -p .repo/manifests
-          curl --fail --show-error --location --proto '=https' "$OP_MANIFEST" -o .repo/manifests/temp_manifest.xml
-          "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "oneplus/sm8650" -m temp_manifest.xml --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags
-        elif [[ "$OP_BRANCH" == wild/* ]]; then
-          mkdir -p .repo/manifests
-          cp "../manifests/$(echo "$OP_OS_VERSION" | tr '[:upper:]' '[:lower:]')/$OP_MANIFEST" .repo/manifests/temp_manifest.xml
-          "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "oneplus/sm8650" -m temp_manifest.xml --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags
-        else
-          "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "$OP_BRANCH" -m "$OP_MANIFEST" --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags
-        fi
+        success=false
+        for i in 1 2 3; do
+          if [[ "$OP_MANIFEST" == https://* ]]; then
+            mkdir -p .repo/manifests
+            if curl --fail --show-error --location --proto '=https' "$OP_MANIFEST" -o .repo/manifests/temp_manifest.xml && \
+               "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "oneplus/sm8650" -m temp_manifest.xml --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags; then
+              success=true
+              break
+            fi
+          elif [[ "$OP_BRANCH" == wild/* ]]; then
+            mkdir -p .repo/manifests
+            cp "../manifests/$(echo "$OP_OS_VERSION" | tr '[:upper:]' '[:lower:]')/$OP_MANIFEST" .repo/manifests/temp_manifest.xml
+            if "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "oneplus/sm8650" -m temp_manifest.xml --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags; then
+              success=true
+              break
+            fi
+          else
+            if "$REPO" init -u https://github.com/OnePlusOSS/kernel_manifest.git -b "$OP_BRANCH" -m "$OP_MANIFEST" --repo-rev=v2.16 --depth=1 --no-clone-bundle --no-tags; then
+              success=true
+              break
+            fi
+          fi
+          echo "⚠️ repo init attempt $i failed; retrying..."
+          sleep 30
+        done
+        $success || { echo "::error::repo init failed after 3 attempts"; exit 1; }
         
         "$REPO" --version
         success=false
@@ -939,6 +954,20 @@ runs:
             fi
           fi
         done
+        # Fix OP15 Recovery Bootloop (SUS_MOUNT mnt_parent panic)
+        if grep -q "mnt = mnt->mnt_parent" ./fs/statfs.c; then
+          sed -i 's/for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID; mnt = mnt->mnt_parent) { }/for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID \&\& mnt->mnt_parent \&\& mnt != mnt->mnt_parent; mnt = mnt->mnt_parent) { }/g' ./fs/statfs.c
+        fi
+        if grep -q "mnt = mnt->mnt_parent" ./fs/proc/fd.c; then
+          sed -i 's/for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID; mnt = mnt->mnt_parent) { }/for (; mnt->mnt_id >= DEFAULT_KSU_MNT_ID \&\& mnt->mnt_parent \&\& mnt != mnt->mnt_parent; mnt = mnt->mnt_parent) { }/g' ./fs/proc/fd.c
+        fi
+        
+        # The SUS_MOUNT patch changes statfs_by_dentry(path->dentry, buf) to statfs_by_dentry(mnt->mnt.mnt_root, buf) universally.
+        # This breaks statfs in Recovery on ramdisks. We restore statfs_by_dentry(path->dentry, buf) for all non-user processes (like Recovery).
+        if grep -q "error = statfs_by_dentry(mnt->mnt.mnt_root, buf);" ./fs/statfs.c; then
+          sed -i 's/error = statfs_by_dentry(mnt->mnt.mnt_root, buf);/if (likely(susfs_is_current_proc_umounted_app())) { error = statfs_by_dentry(mnt->mnt.mnt_root, buf); } else { error = statfs_by_dentry(path->dentry, buf); }/g' ./fs/statfs.c
+        fi
+
         echo "✅ SUSFS patches applied"
         echo "::endgroup::"
 
