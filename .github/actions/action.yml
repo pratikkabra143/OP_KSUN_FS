@@ -667,54 +667,60 @@ runs:
         
         retry_clone "https://github.com/TheWildJames/AnyKernel3.git" "$ANYKERNEL_BRANCH"
         
-        # --- Patch AnyKernel3 flashing output for SakFi ---\n        echo "Patching AnyKernel3 flashing output..."\n
-        cat << 'EOF' > patch_anykernel.py
-import sys
-import re
-
-with open('AnyKernel3/anykernel.sh', 'r', encoding='utf-8') as f:
-    content = f.read()
-
-# Replace texts
-content = content.replace('WildKernels Telegram Channel:', 'SakFi Kernel Releases:')
-content = content.replace('https://t.me/WildKernels', 'https://github.com/sakfi/OP_KSUN_FS')
-content = content.replace('WildKernels Website:', '')
-content = content.replace('https://wildkernels.dev', '')
-content = content.replace('Wild_KSU GitHub Repository:', '')
-content = content.replace('https://github.com/WildKernels/Wild_KSU', '')
-content = content.replace('KernelSU-Next fork focused on customization and root-hiding features!', 'OnePlus kernels tailored with KernelSU Next and SUSFS.')
-content = content.replace('GKI_KernelSU_SUSFS GitHub Repository:', '')
-content = content.replace('https://github.com/WildKernels/GKI_KernelSU_SUSFS', '')
-content = content.replace('GKI kernels with KernelSU and SUSFS.', '')
-content = content.replace('OnePlus_KernelSU_SUSFS GitHub Repository:', '')
-content = content.replace('https://github.com/WildKernels/OnePlus_KernelSU_SUSFS', '')
-content = content.replace('OnePlus kernels with KernelSU and SUSFS.', '')
-
-content = content.replace('Wild Kernels by TheWildJames aka Morgan Weedman', 'SakFi OP Kernels by sakfi')
-content = content.replace('AnyKernel3 by osm0sis @ xda-developers', 'AnyKernel3 by osm0sis @ xda-developers\\nui_print "Wild Kernels by TheWildJames"\\nui_print "& fatalcoder524"')
-content = content.replace('Wild Kernels Supported', 'SakFi Kernels Supported')
-
-# Inject ASCII replacing 'Done!'
-ascii_commands = """ui_print "_nnnn_"\\nui_print "dGGGGMMb     ,\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"\\"."\\nui_print "@p~qp~~qMb    | SakFi OP Kernel  |"\\nui_print "M|@||@) M|   _;..................'"\\nui_print "@,----.JM| -'"\\nui_print "JS^\\\\__/  qKL"\\nui_print "dZP        qKRb"\\nui_print "dZP          qKKb"\\nui_print "fZP            SMMb"\\nui_print "HZM            MMMM"\\nui_print "FqM            MMMM"\\nui_print "__| \\".        |\\\\dS\\"qML"\\nui_print "|    `.       | `' \\\\Zq"\\nui_print "_)      \\\\.___.,|     .'"\\nui_print "\\\\____   )MMMMMM|   .'"\\nui_print "`-'       `--' hjm""""
-
-lines = content.split('\n')
-for i, line in enumerate(lines):
-    if 'ui_print "Done!";' in line:
-        art_lines = [l+";" for l in ascii_commands.splitlines() if l.strip()]
-        lines.insert(i, '\n'.join(art_lines))
-        break
-
-content = '\n'.join(lines)
-content = content.replace('ui_print "Done!";', 'ui_print "Done! Good Luck with your new Kernel!!";')
-
-# Remove duplicate empty ui_prints caused by deleted urls
-content = re.sub(r'(ui_print "";\s*){2,}', 'ui_print "";\n', content)
-
-with open('AnyKernel3/anykernel.sh', 'w', encoding='utf-8') as f:
-    f.write(content)
-EOF
-        python3 patch_anykernel.py
-        rm patch_anykernel.py
+        # --- Patch AnyKernel3 flashing output for SakFi ---
+        echo "Patching AnyKernel3 flashing output..."
+        AK3="AnyKernel3/anykernel.sh"
+        AK3_BANNER="AnyKernel3/banner"
+        AK3_UPDATE="AnyKernel3/META-INF/com/google/android/update-binary"
+        
+        if [ -f "$AK3_BANNER" ]; then
+          sed -i 's/WildKernels Telegram Channel:/SakFi Kernel Releases:/g' "$AK3_BANNER"
+          sed -i 's|https://t.me/WildKernels"|https://github.com/sakfi/OP_KSUN_FS"|g' "$AK3_BANNER"
+          sed -i 's|https://t.me/WildKernels|https://github.com/sakfi/OP_KSUN_FS|g' "$AK3_BANNER"
+          sed -i 's/WildKernels Website://g' "$AK3_BANNER"
+          sed -i 's|https://wildkernels.dev||g' "$AK3_BANNER"
+          sed -i 's/Wild_KSU GitHub Repository://g' "$AK3_BANNER"
+          sed -i 's|https://github.com/WildKernels/Wild_KSU||g' "$AK3_BANNER"
+          sed -i 's/KernelSU-Next fork focused on customization and root-hiding features!/OnePlus kernels tailored with KernelSU Next and SUSFS./g' "$AK3_BANNER"
+          sed -i 's/GKI_KernelSU_SUSFS GitHub Repository://g' "$AK3_BANNER"
+          sed -i 's|https://github.com/WildKernels/GKI_KernelSU_SUSFS||g' "$AK3_BANNER"
+          sed -i 's/GKI kernels with KernelSU and SUSFS.//g' "$AK3_BANNER"
+          sed -i 's/OnePlus_KernelSU_SUSFS GitHub Repository://g' "$AK3_BANNER"
+          sed -i 's|https://github.com/WildKernels/OnePlus_KernelSU_SUSFS||g' "$AK3_BANNER"
+          sed -i 's/OnePlus kernels with KernelSU and SUSFS.//g' "$AK3_BANNER"
+        fi
+        
+        sed -i 's/Wild Kernels by TheWildJames aka Morgan Weedman/SakFi OP Kernels by sakfi/g' "$AK3"
+        sed -i 's/Wild Kernels Supported/SakFi Kernels Supported/g' "$AK3"
+        
+        if [ -f "$AK3_UPDATE" ]; then
+          sed -i 's|ui_print " " "AnyKernel3 by osm0sis @ xda-developers" " ";|ui_print " " "AnyKernel3 by osm0sis @ xda-developers" " ";\nui_print "Wild Kernels by TheWildJames";\nui_print "\\& fatalcoder524";|g' "$AK3_UPDATE"
+        fi
+        
+        cat << 'ASCIIEOF' > ascii_art.txt
+        ui_print "_nnnn_";
+        ui_print "dGGGGMMb     ,\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\".";
+        ui_print "@p~qp~~qMb    | SakFi OP Kernel  |";
+        ui_print "M|@||@) M|   _;..................'";
+        ui_print "@,----.JM| -'";
+        ui_print "JS^\\__/  qKL";
+        ui_print "dZP        qKRb";
+        ui_print "dZP          qKKb";
+        ui_print "fZP            SMMb";
+        ui_print "HZM            MMMM";
+        ui_print "FqM            MMMM";
+        ui_print "__| \".        |\\dS\"qML";
+        ui_print "|    `.       | `' \\Zq";
+        ui_print "_)      \\.___.,|     .'";
+        ui_print "\\____   )MMMMMM|   .'";
+        ui_print "`-'       `--' hjm";
+        ASCIIEOF
+        
+        cat ascii_art.txt >> "$AK3"
+        echo 'ui_print "Done! Good Luck with your new Kernel!!";' >> "$AK3"
+        
+        python3 -c "import re; f=open('$AK3', 'r'); c=f.read(); f.close(); c=re.sub(r'(ui_print \"\";\\s*){2,}', 'ui_print \"\";\\n', c); f=open('$AK3', 'w'); f.write(c)"
+        rm ascii_art.txt
         # --------------------------------------------------
         
         retry_clone "https://github.com/TheWildJames/kernel_patches.git"
