@@ -599,7 +599,7 @@ runs:
         echo "::group::Clone dependencies"
         echo "Cloning AnyKernel3 and other dependencies..."
         
-        ANYKERNEL_BRANCH="gki-2.0"
+        ANYKERNEL_BRANCH="Testing"
         
         if [ "${{ env.OP_SUSFS }}" = true ]; then
           # Determine SUSFS branch/commit to use
@@ -665,7 +665,7 @@ runs:
           return 1
         }
         
-        retry_clone "https://github.com/TheWildJames/AnyKernel3.git" "$ANYKERNEL_BRANCH"
+        retry_clone "https://github.com/sakfi/AnyKernel3.1.git" "$ANYKERNEL_BRANCH"
         
         # --- Patch AnyKernel3 flashing output for SakFi ---
         echo "Patching AnyKernel3 flashing output..."
