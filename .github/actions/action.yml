@@ -830,11 +830,12 @@ runs:
             if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
               cd "$KSUN_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
-              echo "Applying KSUN fix patches for $susfs_version..."
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_apk_sign.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_core_hook.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_sucompat.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_kernel_compat.c.patch" || true
+              echo "Applying KSUN fix patches for $susfs_version (auto-detecting .rej files)..."
+              for file in $(find ./kernel -maxdepth 2 -name "*.rej" -printf "%f\n" | cut -d'.' -f1); do
+                echo "Patching file: $file.c with fix_$file.c.patch"
+                patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_$file.c.patch"
+              done
+              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_kernel_compat.c.patch"
             else
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
@@ -844,20 +845,17 @@ runs:
             if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
               cd "$KSUN_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
-              echo "Applying KSUN fix patches for v2.0.0..."
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_Makefile.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_allowlist.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_kernel_umount.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_ksu.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_ksud.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_sucompat.c.patch" || true
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_supercalls.c.patch" || true
+              echo "Applying KSUN fix patches for v2.0.0 (auto-detecting .rej files)..."
+              for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \;); do
+                echo "Patching file: $file with fix_$file.patch"
+                patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_$file.patch"
+              done
               echo "Patching Hook Mode!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/overwrite_hook_mode.patch" || true
+              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/overwrite_hook_mode.patch"
               echo "Patching KSU_TOOLKIT Support for SusFS kernel!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch" || true
+              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch"
               echo "Patching Multi-manager Support for SusFS kernel!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_manager.patch" || true
+              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_manager.patch"
             else
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
@@ -973,31 +971,8 @@ runs:
           sed -i 's/error = statfs_by_dentry(mnt->mnt.mnt_root, buf);/if (likely(susfs_is_current_proc_umounted_app())) { error = statfs_by_dentry(mnt->mnt.mnt_root, buf); } else { error = statfs_by_dentry(path->dentry, buf); }/g' ./fs/statfs.c
         fi
 
-        # PERMANENT FIX: duplicate symbol __stack_chk_guard on android12-5.10
-        # ksu.c has: #if defined(CONFIG_STACKPROTECTOR) && !defined(CONFIG_STACKPROTECTOR_PER_TASK)
-        # All the code that re-defines __stack_chk_guard lives inside that #if block.
-        # Setting CONFIG_STACKPROTECTOR_PER_TASK=y makes the compiler skip the block entirely
-        # at preprocessing time — zero source-file patching needed, zero fragility.
-        if [ "${{ env.ANDROID_VER }}" = "android12" ] && [ "${{ env.KERNEL_VER }}" = "5.10" ]; then
-          GKI_DEFCONFIG="$COMMON_KERNEL_FOLDER/arch/arm64/configs/gki_defconfig"
-          if [ -f "$GKI_DEFCONFIG" ]; then
-            if ! grep -qxF 'CONFIG_STACKPROTECTOR_PER_TASK=y' "$GKI_DEFCONFIG"; then
-              echo 'CONFIG_STACKPROTECTOR_PER_TASK=y' >> "$GKI_DEFCONFIG"
-              echo "  ✅ Injected CONFIG_STACKPROTECTOR_PER_TASK=y into $GKI_DEFCONFIG"
-            else
-              echo "  ✅ CONFIG_STACKPROTECTOR_PER_TASK=y already present in defconfig"
-            fi
-          else
-            echo "  ⚠️  gki_defconfig not found at expected path, trying find..."
-            GKI_DEFCONFIG=$(find "$COMMON_KERNEL_FOLDER" -name "gki_defconfig" -type f 2>/dev/null | head -n1)
-            if [ -n "$GKI_DEFCONFIG" ]; then
-              echo 'CONFIG_STACKPROTECTOR_PER_TASK=y' >> "$GKI_DEFCONFIG"
-              echo "  ✅ Injected CONFIG_STACKPROTECTOR_PER_TASK=y into $GKI_DEFCONFIG"
-            else
-              echo "  ❌ gki_defconfig not found anywhere under COMMON_KERNEL_FOLDER"
-            fi
-          fi
-        fi
+        # Note: __stack_chk_guard duplicate symbol is handled by -fno-stack-protector in KCFLAGS
+        # during the Build Kernel step — no source-level patching needed here.
 
         echo "✅ SUSFS patches applied"
         echo "::endgroup::"
