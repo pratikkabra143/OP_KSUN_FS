@@ -7,11 +7,6 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      make_release:
-        description: 'Do you want to create a release?'
-        required: true
-        type: boolean
-        default: false
       op_model:
         description: 'Select the OnePlus kernels to build'
         required: true
@@ -281,12 +276,11 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload build matrix
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: build-matrix
           path: matrix.json
-          archive: false
-          retention-days: 7
+          retention-days: 1
 
       - name: 📊 Build plan summary
         run: |
@@ -305,7 +299,6 @@ jobs:
           # - KSU Config: `"$KSU_OPTIONS"`
           # - Optimization: `${{ inputs.optimize_level }}`
           # - Clean Build/No Ccache: ${{ inputs.clean_build && '✅ Yes' || '❌ No' }}
-          # - Create Release: ${{ inputs.make_release && '✅ Yes' || '❌ No' }}
           
           # **SUSFS Configuration:**
           # EOF
@@ -328,7 +321,6 @@ jobs:
           `
           - Optimization: ${{ inputs.optimize_level }}
           - Clean Build/No Ccache: ${{ inputs.clean_build && '✅ Yes' || '❌ No' }}
-          - Create Release: ${{ inputs.make_release && '✅ Yes' || '❌ No' }}
           
           **SUSFS Configuration:**
           EOF
@@ -642,36 +634,54 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     environment: Production-Release
-    if: ${{ inputs.make_release }}
     env:
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: '*TEST BUILD* OnePlus Kernels With KernelSU Next & SUSFS v2.0.0 *TEST BUILD*'
+      RELEASE_NAME: 'OnePlus Kernels With KSUN & SUSFS integrated — SakFi'
       SUSFS_BASE_VERSION: 'v2.0.0'
+      NEW_TAG: ''
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: 🏷️ Generate and Create New Tag
+      - name: 🏷️ Generate and Create New Unique Tag
+        id: generate_tag
         run: |
-          BASE_TAG="$SUSFS_BASE_VERSION-r0"
-          LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
+          LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[].name' 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
           if [ -z "$LATEST_TAG" ]; then
-            LATEST_TAG="$BASE_TAG"
+            BASE_TAG="v1.0.1"
           else
-            LATEST_TAG=$(printf "%s\n%s\n" "$LATEST_TAG" "$BASE_TAG" | sort -rV | head -n1)
+            MAJOR=$(echo "$LATEST_TAG" | awk -F. '{print $1}')
+            MINOR=$(echo "$LATEST_TAG" | awk -F. '{print $2}')
+            PATCH=$(echo "$LATEST_TAG" | awk -F. '{print $3}')
+            PATCH=$((PATCH + 1))
+            BASE_TAG="$MAJOR.$MINOR.$PATCH"
           fi
-          NEW_TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
-          echo "New tag: $NEW_TAG"
-          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
-          git tag $NEW_TAG
-          git push origin $NEW_TAG
+          
+          # Ensure tag uniqueness by checking against remote
+          TAG_TO_USE="$BASE_TAG"
+          while gh api "repos/$REPO_OWNER/$REPO_NAME/git/ref/tags/$TAG_TO_USE" --silent 2>/dev/null; do
+            echo "⚠️ Tag $TAG_TO_USE already exists. Incrementing patch version..."
+            MAJOR=$(echo "$TAG_TO_USE" | awk -F. '{print $1}')
+            MINOR=$(echo "$TAG_TO_USE" | awk -F. '{print $2}')
+            PATCH=$(echo "$TAG_TO_USE" | awk -F. '{print $3}')
+            PATCH=$((PATCH + 1))
+            TAG_TO_USE="$MAJOR.$MINOR.$PATCH"
+          done
+          
+          echo "✅ Final unique tag: $TAG_TO_USE"
+          echo "NEW_TAG=${TAG_TO_USE}" >> $GITHUB_ENV
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG_TO_USE"
+          git push origin "$TAG_TO_USE"
 
       - name: 📥 Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: ./downloaded-artifacts
 
@@ -725,11 +735,21 @@ jobs:
           [ -z "$SUSFS_A16" ] && SUSFS_A16="gki-android16-6.12 (auto)"
           
           cat << EOF > release_notes.md
-          # 🎯 OnePlus Kernels with KernelSU Next & SUSFS $SUSFS_BASE_VERSION
+          <div align="center">
           
-          > **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')  
-          > **Build ID:** \`${{ github.run_id }}\`  
-          > **Workflow:** [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          # 🔥 OnePlus Kernels Release 🔥
+          
+          [![Release](https://img.shields.io/github/v/release/${{ github.repository }}?style=flat-square&color=blue)](${{ github.server_url }}/${{ github.repository }}/releases/latest)
+          [![Downloads](https://img.shields.io/github/downloads/${{ github.repository }}/${{ env.NEW_TAG }}/total?style=flat-square&color=green)](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ env.NEW_TAG }})
+          [![Workflow](https://img.shields.io/badge/Workflow-Build--Kernel-orange?style=flat-square)](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          <a href="${{ github.server_url }}/${{ github.repository }}">
+            <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=500&size=20&duration=3000&pause=1000&color=00FF99&center=true&vCenter=true&width=600&lines=KernelSU-Next+%2B+SUSFS+Release;Built+for+OnePlus+GKI+devices;Version+${{ env.NEW_TAG }};Maintained+by+sakfi" alt="Typing SVG" />
+          </a>
+          
+          > **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC') | **Build ID:** \`${{ github.run_id }}\`
+          
+          </div>
           
           ---
           
@@ -746,7 +766,7 @@ jobs:
             feature_flags=$(jq -r --arg MODEL "$model" '
               .[] | 
               select(.model == $MODEL) |
-              "\(.hmbird // false)\t\(.susfs // false)\t\(.bbr // false)\t\(.bbg // false)\t\(.ttl // false)\t\(.ip_set // false)\t\(.unicode // false)"
+              "\(.hmbird // false)\t\(.susfs // false)\t\(.bbr // false)\t\(.bbg // false)\t\(.ttl // false)\t\(.ip_set // false)"
             ' <<< "$JSON_BUILD_DATA")
             
             features=""
@@ -754,16 +774,15 @@ jobs:
             if [[ -z "$feature_flags" ]]; then
               echo "Warning: No JSON entry found for model: $model" >&2
             else
-              IFS=$'\t' read -r hmbird susfs bbr bbg ttl ip_set unicode <<< "$feature_flags"
+              IFS=$'\t' read -r hmbird susfs bbr bbg ttl ip_set <<< "$feature_flags"
               
               # Build features string based on boolean values
               [[ "$hmbird" == "true" ]] && features+="🐦 HMBIRD "
               [[ "$susfs" == "true" ]] && features+="ඞ SusFS "
               [[ "$bbr" == "true" ]] && features+="🚀 BBR "
               [[ "$bbg" == "true" ]] && features+="🛡️ BBG "
-              [[ "$ttl" == "true" ]] && features+="🌐 TTL "
-              [[ "$ip_set" == "true" ]] && features+="🧱 IP_SET & IPv6 NAT"
-              [[ "$unicode" == "true" ]] && features+="🔧 Unicode Fix"
+              [[ "$ttl" == "true" ]] && features+="⏱️ TTL "
+              [[ "$ip_set" == "true" ]] && features+="🔧 IP_SET"
             fi
             
             printf "| %-13s | %-10s | %-16s | %-30s |\n" \
@@ -781,6 +800,11 @@ jobs:
           cat << EOF >> release_notes.md
           
           ---
+          
+          <details>
+          <summary><b>⚙️ View Build Configuration Details</b></summary>
+          
+          <br>
           
           ## 🔧 Build Configuration
           
@@ -819,62 +843,44 @@ jobs:
           | android15-6.6  | \`$SUSFS_A15\` |
           | android16-6.12 | \`$SUSFS_A16\` |
           
+          </details>
+          
           ---
           
           ## ✨ Features & Capabilities
           
-          ### 🔐 Root Management
+          | 🏷️ Feature | 📝 Description |
+          |:---|:---|
           EOF
           if [ -n "$KSUN_BRANCH" ]; then
             cat << EOF >> release_notes.md
-          - **KernelSU Next** - Next-generation kernel-level root solution
+          | 🔐 **KernelSU-Next** | Next-generation kernel-level root solution |
           EOF
           elif [ -n "$KSU_BRANCH" ]; then
             cat << EOF >> release_notes.md
-          - **KernelSU** - Kernel-level root solution
+          | 🔐 **KernelSU** | Kernel-level root solution |
           EOF
           fi
           cat << EOF >> release_notes.md
-          - **SUSFS $SUSFS_BASE_VERSION** - Advanced hiding and security features
-          EOF
-          if [ -n "$KSUN_BRANCH" ] && [ "${ksu_ver_global:-0}" -lt 12884 ]; then
-            cat << EOF >> release_notes.md
-          - **Magic Mount Support** - Seamless file system modifications
-          EOF
-          fi
-          if [ "${ksu_ver_global:-0}" -lt 12884 ]; then
-            cat << EOF >> release_notes.md
-          - **Manual Hooks** - scope_min_manual_hooks_v1.4 for better compatibility
-          EOF
-          fi
-          cat << EOF >> release_notes.md
-          ### 🛡️ Security & Privacy
-          - **Baseband Guard (BBG)** - LSM-based baseband security
-          - **SUSFS Hide Features**:
-            - ✅ SUS_PATH - Hide suspicious paths
-            - ✅ SUS_MOUNT - Hide mount points (No Cli Support)
-            - ✅ SUS_KSTAT - Spoof kernel statistics
-            - ✅ SPOOF_UNAME - Kernel version spoofing
-            - ✅ SPOOF_CMDLINE - Boot parameters spoofing
-            - ✅ OPEN_REDIRECT - File access redirection
-            - ✅ SUS_MAP - Memory mapping protection
-            - ✅ AVC_SPOOF - Spoof Procfs avc denial logs
-          - **Ptrace Leak Fix** - For kernels < 5.16
-          - **Unicode Fix** - Prevent path traversal and other detections using non-printable Unicode codepoints [Experimental]
+          | 🥷 **SUSFS $SUSFS_BASE_VERSION** | Advanced root hiding with Magic Mount support |
+          | 🛠️ **Manual Hooks** | \`scope_min_manual_hooks_v1.4\` for better app compatibility |
+          | 🖧 **BBR** | Improved TCP congestion control |
+          | 🛡️ **BBG** | LSM-based Baseband Guard security |
+          | 🌐 **TTL Target Support** | Network packet manipulation |
+          | 🧱 **IP Set Support** | Advanced firewall capabilities |
+          | 🏗️ **HMBIRD SCX** | Scheduler extensions for SM8750 devices |
+          | ✅ **LTO** | Link Time Optimization |
+          | ⚡️ **TMPFS XATTR** | Extended attributes for Mountify support |
+          | 🚀 **Optimization** | Memory, I/O, CPU scheduler, network tuning patches |
           
-          ### 🚀 Performance & Networking
-          - **BBRv1** - Improved TCP congestion control
-          - **Wireguard** - Built-in VPN support
-          - **IP Set & IPv6 NAT Support** - Advanced firewall capabilities and IPv6 NAT Support
-          - **TTL Target Support** - Network packet manipulation
-          - **LTO (Link Time Optimization)** - Optimized binary size and performance
-          - **ccache-accelerated builds** - Faster compilation times
-          - **Optimisation Patches** - Memory, I/O, CPU scheduler, network and other general tunings
+          <br>
           
-          ### 🔧 System Features
-          - **TMPFS_XATTR** - Extended attributes for tmpfs (Mountify support)
-          - **TMPFS_POSIX_ACL** - POSIX ACLs for tmpfs
-          - **HMBIRD SCX** - Scheduler extensions for all SM8750/MT6991 devices
+          <details>
+          <summary><b>👀 View SUSFS Hide Capabilities</b></summary>
+          
+          - ✅ SUS_PATH · SUS_MOUNT · SUS_KSTAT · SUS_MAP
+          - ✅ SPOOF_UNAME · SPOOF_CMDLINE · OPEN_REDIRECT · AVC_SPOOF
+          </details>
           
           ---
           
@@ -885,41 +891,47 @@ jobs:
           if [ -n "$KSUN_BRANCH" ]; then
             cat << EOF >> release_notes.md
           - **KernelSU Next Manager**  
-            → [GitHub Release](https://github.com/KernelSU-Next/KernelSU-Next/releases)
+            → [GitHub](https://github.com/KernelSU-Next/KernelSU-Next)
+          - **Wild KernelSU Manager** (Alternative) 
+            → [GitHub](https://github.com/WildKernels/KernelSU_Action/releases)
           EOF
           elif [ -n "$KSU_BRANCH" ]; then
             cat << EOF >> release_notes.md
           - **KernelSU Manager**  
             → [GitHub Release](https://github.com/tiann/KernelSU/releases)
+          - **Wild KernelSU Manager** (Alternative)  
+            → [GitHub Release](https://github.com/WildKernels/KernelSU_Action/releases)
           EOF
           fi
-          cat << EOF >> release_notes.md
-          ### Community Managers
-          - **WildKSU Manager** (Recommended for additional features)  
-            → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)
+          cat <<EOF >> release_notes.md
           
-          ### Required Module
+          ### SusFS Module
           - **KSU SUSFS Module** (Required for SUSFS features)  
             → [GitHub Release](https://github.com/sidex15/ksu_module_susfs/releases)
           
-          ### Recomended Flasher
-          - **Kernel Flasher** (Required for flashing AnyKernel3 zips and backups and OTA)  
+          ### Recommended Flasher
+          - **Kernel Flasher** (Recommended for flashing AnyKernel3 ZIPs, backups and OTA)  
             → [GitHub Release](https://github.com/fatalcoder524/KernelFlasher/releases)
+          - **KSUN Built-in Flasher** (Alternative flasher)  
+            → Accessible directly within the KernelSU Next Manager app
           
           ---
           
           ## 📥 Installation Instructions
           
-          ### Prerequisites
+          <details>
+          <summary><b>🛠️ View Prerequisites</b></summary>
+          
           - Unlocked bootloader.
           - Backup your current boot image.
           - Have root access using Magisk / KernelSU (Any forks) / Apatch.
+          </details>
           
           ### Via Kernel Flasher
-          1. Download the appropriate ZIP for your device.
-          2. Flash the ZIP file using Kernel Flasher.
+          1. Download the appropriate ZIP for your device from the Assets below.
+          2. Flash the ZIP file using [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher) or [Horizon Kernel Flasher](https://github.com/libxzr/HorizonKernelFlasher).
           3. Reboot system.
-          4. Install KernelSU-Next/WildSU Manager.
+          4. Install KernelSU-Next Manager (or KernelSU Manager depending on build).
           5. Install SUSFS module from manager.
           
           ---
