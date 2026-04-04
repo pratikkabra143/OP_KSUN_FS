@@ -670,6 +670,7 @@ jobs:
   trigger-release:
     needs: [set-op-model, build]
     runs-on: ubuntu-latest
+    environment: Production-Release
     if: ${{ inputs.make_release }}
     env:
       REPO_OWNER: ${{ github.repository_owner }}
