@@ -842,6 +842,11 @@ jobs:
           
           ---
           
+          <details>
+          <summary><b>⚙️ View Build Configuration Details</b></summary>
+          
+          <br>
+          
           ## 🔧 Build Configuration
           
           | Component | Version/Setting |
@@ -889,58 +894,126 @@ jobs:
             echo "| $key | \`${susfs_map[$key]:-unknown}\` |"
           done)
           
+          </details>
           ---
           
           ## ✨ Features & Capabilities
-
-          ### 🛡️ Security & Privacy
-          - ✅ SUS_PATH - Hide suspicious paths
-          - ✅ SUS_MOUNT - Hide mount points (No Cli Support)
-          - ✅ SUS_KSTAT - Spoof kernel statistics
-          - ✅ SPOOF_UNAME - Kernel version spoofing
-          - ✅ SPOOF_CMDLINE - Boot parameters spoofing
-          - ✅ OPEN_REDIRECT - File access redirection
-          - ✅ SUS_MAP - Memory mapping protection
-          - ✅ AVC_SPOOF - Spoof Procfs avc denial logs
-          - **Ptrace Leak Fix** - For kernels < 5.16
-          - **Unicode Fix** - Prevent path traversal regressions [Experimental]
-
-          ### 🚀 Performance & Networking
-          - **BBRv1** - Improved TCP congestion control
-          - **TTL Target & Match** - For bypassing hotspot limits
-          - **IP_SET & IPv6 NAT** - Enabled for VPN apps
-
+          
+          | 🏷️ Feature | 📝 Description |
+          |:---|:---|
+          | 🔐 **KernelSU-Next** | Next-generation kernel-level root solution |
+          | 🥷 **SUSFS v2.1.0** | Advanced root hiding with Magic Mount support |
+          | 🛠️ **Manual Hooks** | \`scope_min_manual_hooks_v1.4\` for better app compatibility |
+          | 🖧 **BBR** | Improved TCP congestion control |
+          | 🛡️ **BBG** | LSM-based Baseband Guard security |
+          | 🌐 **TTL Target Support** | Network packet manipulation |
+          | 🧱 **IP Set Support** | Advanced firewall capabilities |
+          | 🏗️ **HMBIRD SCX** | Scheduler extensions for SM8750 devices |
+          | ✅ **LTO** | Link Time Optimization |
+          | ⚡️ **TMPFS XATTR** | Extended attributes for Mountify support |
+          | 🚀 **Optimization** | Memory, I/O, CPU scheduler, network tuning patches |
+          
+          <br>
+          
+          <details>
+          <summary><b>👀 View SUSFS Hide Capabilities</b></summary>
+          
+          - ✅ SUS_PATH · SUS_MOUNT · SUS_KSTAT · SUS_MAP
+          - ✅ SPOOF_UNAME · SPOOF_CMDLINE · OPEN_REDIRECT · AVC_SPOOF
+          </details>
+          
           ---
-
-          ## 📥 Installation
-
-          ### Prerequisites
-          1. **Unchecked KernelSU check inside Flasher App**.
-          2. **Remove Multiple Root Methods**
-             a. If root access is from Magisk(any forks): Perform complete uninstall from Magisk Manager.
-             b. If root access is from KSU LKM(any forks): Flash Stock boot/init_boot/vendor_boot based on what you image you patched to get root access or Uninstall LKM. Recommended to flash stock image.
-             c. If root access is from KSU GKI(any forks): Uninstall Manager. Delete /data/adb/ksud bin file. Reinstall Manager based on AK3 zip version. [Not required to do everytime]
-             d. If root access is from Apatch(any forks): Delete all files from /data/adb. This is to start fresh and reduce multiple root implementation detected by modules.
-          3. Flash zip in recovery (TWRP/OFOX) or using kernel flasher apps (FKM, Kernel Flasher).
-          4. Reboot system.
-          5. Install KernelSU-Next Manager (No App support for original KernelSU).
-          6. Install SusFS module from manager.
-
-          ---
-          ## 🔗 Important Links
-
-          ### Kernel SU
-          - **KernelSU Manager**
-            ➡️ [GitHub Release](https://github.com/tiann/KernelSU/releases)
-          - **KernelSU Next Manager**
-            ➡️ [GitHub Release](https://github.com/rifsxd/KernelSU-Next/releases)
-
+          
+          ## 📱 Manager Applications
+          
+          ### Official Manager
+          - **KernelSU Next Manager**  
+            → [GitHub](https://github.com/KernelSU-Next/KernelSU-Next)
+          - **Wild KernelSU Manager** (Alternative) 
+            → [GitHub](https://github.com/WildKernels/KernelSU_Action/releases)
+          
           ### SusFS Module
-          - **KSU SUSFS Module** (Required for SUSFS features)
-            ➡️ [GitHub Release](https://github.com/sidex15/ksu_module_susfs/releases)
-
+          - **KSU SUSFS Module** (Required for SUSFS features)  
+            → [GitHub Release](https://github.com/sidex15/ksu_module_susfs/releases)
+          
+          ### Recommended Flasher
+          - **Kernel Flasher** (Recommended for flashing AnyKernel3 ZIPs, backups and OTA)  
+            → [GitHub Release](https://github.com/fatalcoder524/KernelFlasher/releases)
+          - **KSUN Built-in Flasher** (Alternative flasher)  
+            → Accessible directly within the KernelSU Next Manager app
+          
           ---
-          *Note: If you experience missing KernelSU features after flashing, reinstall the manager*
+          
+          ## 📥 Installation Instructions
+          
+          <details>
+          <summary><b>🛠️ View Prerequisites</b></summary>
+          
+          - Unlocked bootloader.
+          - Backup your current boot image.
+          - Have root access using Magisk / KernelSU (Any forks) / Apatch.
+          </details>
+          
+          ### Via Kernel Flasher
+          1. Download the appropriate ZIP for your device from the Assets below.
+          2. Flash the ZIP file using [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher) or [Horizon Kernel Flasher](https://github.com/libxzr/HorizonKernelFlasher).
+          3. Reboot system.
+          4. Install KernelSU-Next Manager (or KernelSU Manager depending on build).
+          5. Install SUSFS module from manager.
+          
+          ---
+          
+          ## 📜 Changelog
+          
+          ### This Release
+          - Updated the kernels as per latest OnePlus updates
+          - Add OnePlus Pad 3 device support.
+          - Add OnePlus 15T device support.
+          - Add OnePlus Turbo 6V device support.
+          - Add OnePlus Turbo 6 device support.
+          - Add Oryon Optimizations for sm8750, sm8845 and sm8850 (Build using ZyC Clang 19 only for sm8750).
+          - Fix Patches updated.
+          - Workflow refactored.
+          - Added ZyC Clang support.
+          - Multi Sepolicy patch is applied.
+          
+          ### Previous Releases
+          See [Releases Page](https://github.com/sakfi/OP_KSUN_FS/releases)
+          
+          ---
+          
+          ## 🌟 Special Thanks
+          
+          These amazing people help make this project possible! ❤️
+          
+          <div align="center">
+          
+          | 🔧 Project/Role | 👨‍💻 Developer | 🔗 Link |
+          |:---:|:---:|:---:|
+          | **Original Repository** | fatalcoder524 | [![GitHub](https://img.shields.io/badge/GitHub-fatalcoder524-blue?style=flat-square&logo=github)](https://github.com/fatalcoder524) |
+          | **KernelSU** | tiann | [![GitHub](https://img.shields.io/badge/GitHub-tiann-blue?style=flat-square&logo=github)](https://github.com/tiann/KernelSU) |
+          | **KernelSU-Next** | rifsxd | [![GitHub](https://img.shields.io/badge/GitHub-rifsxd-blue?style=flat-square&logo=github)](https://github.com/KernelSU-Next/KernelSU-Next) |
+          | **SUSFS** | simonpunk | [![GitLab](https://img.shields.io/badge/GitLab-simonpunk-orange?style=flat-square&logo=gitlab)](https://gitlab.com/simonpunk/susfs4ksu.git) |
+          | **SUSFS Module** | sidex15 | [![GitHub](https://img.shields.io/badge/GitHub-sidex15-blue?style=flat-square&logo=github)](https://github.com/sidex15) |
+          | **Optimization Patches** | backslashxx | [![GitHub](https://img.shields.io/badge/GitHub-backslashxx-blue?style=flat-square&logo=github)](https://github.com/backslashxx) |
+          | **Optimization Patches** | liqideqq (Teemo) | [![GitHub](https://img.shields.io/badge/GitHub-liqideqq-blue?style=flat-square&logo=github)](https://github.com/liqideqq) |
+          
+          </div>
+          
+          ---
+          
+          ## 💬 Support & Connect
+          
+          <div align="center">
+          
+          [![Telegram](https://img.shields.io/badge/Telegram-SakFi-blue?logo=telegram)](http://t.me/SakFi)
+          [![GitHub](https://img.shields.io/badge/GitHub-SakFi-blue?logo=github)](https://github.com/sakfi)
+          
+          <br>
+          
+          **⚡ Built with ❤️ by [sakfi](https://github.com/sakfi)**
+          
+          </div>
           EOF
           echo "--- Final Release Notes ---"
           cat release_notes.md
