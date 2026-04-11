@@ -1280,7 +1280,7 @@ runs:
         cd "$COMMON_KERNEL_FOLDER"
         KERNEL_VERSION="${{ env.KERNEL_VER }}"
         
-        NTSYNC_PATCH_DIR="$KERNEL_PATCHES_FOLDER/ntsync/$KERNEL_VERSION"
+        NTSYNC_PATCH_DIR="$GITHUB_WORKSPACE/ntsync_patches/$KERNEL_VERSION"
         
         if [ -d "$NTSYNC_PATCH_DIR" ]; then
           for patch_file in "$NTSYNC_PATCH_DIR"/*.patch; do
