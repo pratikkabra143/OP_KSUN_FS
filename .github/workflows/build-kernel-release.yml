@@ -96,7 +96,7 @@ on:
         description: 'Enter KernelSU build json'
         required: true
         type: string
-        default: '[{"type":"ksun","hash":"cb559258dd04cd480e2bd8e0397b63c256c7b0d0"}]'
+        default: '[{"type":"ksun","hash":"184e8f62bff4474b4a3cd8fc9dccec26300113da"}]'
       optimize_level:
         description: "Compiler optimization level"
         required: true
@@ -266,7 +266,7 @@ jobs:
           ksu_ref=$(echo "$ksu_options_normalized" | jq -r '.[0].hash')
           
           if [ "$ksu_type" == "KSUN" ]; then
-            KSU_REPO_OWNER="KernelSU-Next"
+            KSU_REPO_OWNER="pratikkabra143"
             KSU_REPO_NAME="KernelSU-Next"
           else
             KSU_REPO_OWNER="tiann"
